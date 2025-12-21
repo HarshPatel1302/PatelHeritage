@@ -1,0 +1,14 @@
+{
+    "name": "patel-heritage",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "npm run dev --workspace=@patel-heritage/web",
+        "build": "npm run build --workspace=@patel-heritage/web",
+        "start": "npm run start --workspace=@patel-heritage/web",
+        "lint": "npm run lint --workspace=@patel-heritage/web"
+    },
+    "workspaces": [
+        "apps/*"
+    ]
+}

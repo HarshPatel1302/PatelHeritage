@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Patel Heritage Assistant</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="glass-container">
+    <header>
+      <img src="icons/icon48.png" alt="Logo" class="logo">
+      <h1>Patel Heritage</h1>
+      <div id="status-indicator" class="status-offline"></div>
+    </header>
+
+    <main>
+      <div class="search-box">
+        <input type="text" id="resident-search" placeholder="Search flat or name...">
+      </div>
+
+      <div class="quick-links">
+        <button class="link-card" id="btn-home">
+          <span class="icon">🏠</span>
+          <span class="label">Resident Home</span>
+        </button>
+        <button class="link-card" id="btn-dashboard">
+          <span class="icon">📊</span>
+          <span class="label">Dashboard</span>
+        </button>
+        <button class="link-card" id="btn-security">
+          <span class="icon">🛡️</span>
+          <span class="label">Security</span>
+        </button>
+        <button class="link-card" id="btn-messages">
+          <span class="icon">✉️</span>
+          <span class="label">Messages</span>
+        </button>
+      </div>
+
+      <div id="search-results" class="results-container"></div>
+    </main>
+
+    <footer>
+      <p id="server-status">Checking server...</p>
+    </footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

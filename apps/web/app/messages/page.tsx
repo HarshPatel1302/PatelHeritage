@@ -1,0 +1,255 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Send, MessageSquare, AlertCircle, Lightbulb, HelpCircle, CheckCircle2 } from 'lucide-react';
+import { Message } from '@/types';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
+import { canManageMessages, isAdmin } from '@/lib/auth';
+
+export default function MessagesPage() {
+  const { user } = useAuth();
+  const canManage = canManageMessages(user);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [messageType, setMessageType] = useState<Message['type']>('complaint');
+  const [selectedRecipient, setSelectedRecipient] = useState<string>('all');
+
+  // Security and Cook cannot access complaints
+  if (user?.role === 'security' || user?.role === 'cook') {
+    return (
+      <ProtectedRoute requireAuth={true}>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-12 pt-24 flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center">
+            <MessageSquare className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Access Restricted</h2>
+            <p className="text-white/70">Security and Cook cannot access complaints section.</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // Load messages
+  useEffect(() => {
+    const stored = localStorage.getItem('complaintMessages');
+    if (stored) {
+      try {
+        const loadedMessages = JSON.parse(stored);
+        setMessages(loadedMessages);
+      } catch (error) {
+        console.error('Error loading messages:', error);
+      }
+    }
+  }, []);
+
+  const handleSend = () => {
+    if (!newMessage.trim() || !user) return;
+
+    const message: Message = {
+      id: Date.now().toString(),
+      from: user.name,
+      fromFlat: user.flat,
+      to: selectedRecipient,
+      message: newMessage,
+      type: messageType,
+      timestamp: new Date(),
+      status: 'pending',
+    };
+
+    const updatedMessages = [message, ...messages];
+    setMessages(updatedMessages);
+    localStorage.setItem('complaintMessages', JSON.stringify(updatedMessages));
+    setNewMessage('');
+  };
+
+  const handleResponse = (messageId: string, response: string) => {
+    if (!user || !isAdmin(user)) return;
+
+    const updatedMessages = messages.map(msg =>
+      msg.id === messageId
+        ? { ...msg, status: 'resolved' as const, response, respondedBy: user.name }
+        : msg
+    );
+    setMessages(updatedMessages);
+    localStorage.setItem('complaintMessages', JSON.stringify(updatedMessages));
+  };
+
+  const messageIcons = {
+    complaint: AlertCircle,
+    suggestion: Lightbulb,
+    query: HelpCircle,
+    general: MessageSquare,
+  };
+
+  const messageColors = {
+    complaint: 'from-red-500 to-pink-500',
+    suggestion: 'from-yellow-500 to-orange-500',
+    query: 'from-blue-500 to-cyan-500',
+    general: 'from-purple-500 to-indigo-500',
+  };
+
+  return (
+    <ProtectedRoute requireAuth={true}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-12 pt-24">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-4xl md:text-5xl font-bold text-center text-white mb-4">
+            Complaints & Suggestions
+          </h1>
+          <p className="text-center text-gray-300">
+            Connect with committee members and share your feedback
+          </p>
+        </motion.div>
+
+        {/* Message Type Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-6"
+        >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {(['complaint', 'suggestion', 'query', 'general'] as const).map((type) => {
+              const Icon = messageIcons[type];
+              return (
+                <button
+                  key={type}
+                  onClick={() => setMessageType(type)}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    messageType === type
+                      ? `border-heritage-gold bg-gradient-to-br ${messageColors[type]}`
+                      : 'border-white/20 bg-white/5 hover:border-white/40'
+                  }`}
+                >
+                  <Icon className="w-6 h-6 text-white mx-auto mb-2" />
+                  <p className="text-white text-sm capitalize">{type}</p>
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+
+        {/* Recipient Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mb-6"
+        >
+          <select
+            value={selectedRecipient}
+            onChange={(e) => setSelectedRecipient(e.target.value)}
+            className="w-full p-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white focus:outline-none focus:border-heritage-gold"
+          >
+            <option value="all">All Committee Members</option>
+            <option value="chairman">Chairman</option>
+            <option value="secretary">Secretary</option>
+            <option value="treasurer">Treasurer</option>
+          </select>
+        </motion.div>
+
+        {/* Messages List */}
+        <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
+          {messages.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12 bg-white/5 rounded-lg border border-white/10"
+            >
+              <MessageSquare className="w-12 h-12 text-white/50 mx-auto mb-4" />
+              <p className="text-white/70">No messages yet. Start a conversation!</p>
+            </motion.div>
+          ) : (
+            messages.map((msg, index) => {
+              const Icon = messageIcons[msg.type];
+              return (
+                <motion.div
+                  key={msg.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={`bg-gradient-to-br ${messageColors[msg.type]} rounded-lg p-4 border border-white/20`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="text-white font-semibold">{msg.from}</p>
+                          <p className="text-white/70 text-sm">{msg.fromFlat}</p>
+                        </div>
+                        <span className="text-white/70 text-xs">
+                          {msg.timestamp.toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="text-white mb-2">{msg.message}</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          msg.status === 'resolved' 
+                            ? 'bg-green-500/30 text-green-200' 
+                            : msg.status === 'read'
+                            ? 'bg-blue-500/30 text-blue-200'
+                            : 'bg-yellow-500/30 text-yellow-200'
+                        }`}>
+                          {msg.status}
+                        </span>
+                        {msg.response && (
+                          <div className="flex items-center gap-1 text-white/70 text-xs">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Response from {msg.respondedBy}</span>
+                          </div>
+                        )}
+                      </div>
+                      {msg.response && (
+                        <div className="mt-2 p-2 bg-white/10 rounded text-white text-sm">
+                          <p className="font-semibold mb-1">Response:</p>
+                          <p>{msg.response}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Message Input */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20"
+        >
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Type your message here..."
+              className="flex-1 p-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-heritage-gold"
+            />
+            <button
+              onClick={handleSend}
+              className="px-6 py-3 bg-gradient-to-r from-heritage-gold to-yellow-500 text-black font-semibold rounded-lg hover:shadow-lg transition-all flex items-center gap-2"
+            >
+              <Send className="w-5 h-5" />
+              Send
+            </button>
+          </div>
+        </motion.div>
+      </div>
+      </div>
+    </ProtectedRoute>
+  );
+}
+
