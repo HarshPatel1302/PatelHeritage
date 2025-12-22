@@ -50,19 +50,6 @@ export default function LoginPage() {
     setIsLoading(false);
   };
 
-  // Demo credentials
-  const demoUsers = [
-    { username: 'B301', password: 'chairman123', label: 'Chairman (B301)', role: 'chairman' },
-    { username: 'C401', password: 'secretary123', label: 'Secretary (C401)', role: 'secretary' },
-    { username: 'A201', password: '123', label: 'Resident (A201)', role: 'resident' },
-    { username: 'SECURITY', password: 'security123', label: 'Security', role: 'security' },
-    { username: 'COOK', password: 'cook123', label: 'Cook', role: 'cook' },
-  ];
-
-  const fillDemo = (demoUsername: string, demoPassword: string) => {
-    setUsername(demoUsername);
-    setPassword(demoPassword);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
@@ -95,9 +82,6 @@ export default function LoginPage() {
                 placeholder="Enter flat number (e.g., A201)"
                 className="w-full p-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-heritage-gold transition-all"
               />
-              <p className="text-white/50 text-xs mt-1">
-                Residents: Use flat number (e.g., A201, B202). Default password: 123
-              </p>
             </div>
 
             <div>
@@ -135,24 +119,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo Users */}
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <p className="text-white/70 text-sm mb-3 text-center">Quick Login (Demo):</p>
-            <div className="grid grid-cols-2 gap-2">
-              {demoUsers.map((demo) => (
-                <button
-                  key={demo.username}
-                  onClick={() => fillDemo(demo.username, demo.password)}
-                  className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-white text-xs transition-all border border-white/10"
-                >
-                  {demo.label}
-                </button>
-              ))}
-            </div>
-            <p className="text-white/50 text-xs mt-3 text-center">
-              Residents: Flat number + password 123
-            </p>
-          </div>
         </div>
       </motion.div>
     </div>
