@@ -103,47 +103,65 @@ export default function Home() {
             <p className="text-xl md:text-2xl text-gray-300 mb-8">
               Your Smart Society Management System
             </p>
-            <div className="flex justify-center gap-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-8 py-3 bg-heritage-gold text-black font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all"
-                onClick={() => router.push('/wings')}
-              >
-                Explore Wings
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-8 py-3 bg-white/10 backdrop-blur-md text-white font-semibold rounded-lg border border-white/20 hover:bg-white/20 transition-all"
-                onClick={() => router.push('/dashboard')}
-              >
-                Dashboard
-              </motion.button>
-            </div>
+
+            {isAuthenticated ? (
+              <div className="flex justify-center gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-3 bg-heritage-gold text-black font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all"
+                  onClick={() => router.push('/wings')}
+                >
+                  Explore Wings
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-3 bg-white/10 backdrop-blur-md text-white font-semibold rounded-lg border border-white/20 hover:bg-white/20 transition-all"
+                  onClick={() => router.push('/dashboard')}
+                >
+                  Dashboard
+                </motion.button>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-12 py-4 bg-gradient-to-r from-heritage-gold to-yellow-500 text-black font-bold text-lg rounded-xl shadow-xl hover:shadow-heritage-gold/20 transition-all"
+                  onClick={() => router.push('/login')}
+                >
+                  Login to Access
+                </motion.button>
+              </div>
+            )}
           </motion.div>
 
-          {/* Wing Visualization */}
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mb-16"
-          >
-            <WingVisualization />
-          </motion.div>
+          {isAuthenticated && (
+            <>
+              {/* Wing Visualization */}
+              <motion.div
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
+                className="mb-16"
+              >
+                <WingVisualization />
+              </motion.div>
 
-          {/* Features Grid */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.6 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {features.map((feature, index) => (
-              <FeatureCard key={index} {...feature} delay={index * 0.1} />
-            ))}
-          </motion.div>
+              {/* Features Grid */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8, delay: 0.6 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              >
+                {features.map((feature, index) => (
+                  <FeatureCard key={index} {...feature} delay={index * 0.1} />
+                ))}
+              </motion.div>
+            </>
+          )}
         </div>
       </motion.div>
     </div>
