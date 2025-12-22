@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Clock, CheckCircle2, XCircle, Info, DollarSign } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, XCircle, Info, DollarSign, Users } from 'lucide-react';
 import { AMENITIES } from '@/lib/constants';
 import { Amenity, HallBooking } from '@/types';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -36,11 +36,11 @@ export default function AmenitiesPage() {
   }
 
   // Only Silver Hall and Golden Hall are bookable
-  const bookableAmenities = AMENITIES.filter(a => 
+  const bookableAmenities = AMENITIES.filter(a =>
     a.id === 'silver-hall' || a.id === 'golden-hall'
   );
 
-  const nonBookableAmenities = AMENITIES.filter(a => 
+  const nonBookableAmenities = AMENITIES.filter(a =>
     a.id !== 'silver-hall' && a.id !== 'golden-hall'
   );
 
