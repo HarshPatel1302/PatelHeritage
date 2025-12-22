@@ -2,12 +2,12 @@
 
 import { motion } from 'framer-motion';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Home, Users, Phone, Mail, Edit2, Car, Save, X } from 'lucide-react';
+import { ArrowLeft, Home, Users, UserMinus, Phone, Mail, Edit2, Car, Save, X } from 'lucide-react';
 import { WING_CONFIGS } from '@/lib/constants';
 import { Wing, Flat } from '@/types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { isAdmin } from '@/lib/auth';
+import { isAdmin, getUsers, saveUsers, getUserByFlat } from '@/lib/auth';
 
 export default function FloorDetailPage() {
   const params = useParams();
@@ -15,18 +15,18 @@ export default function FloorDetailPage() {
   const { user } = useAuth();
   const wing = params.wing as Wing;
   const floor = parseInt(params.floor as string);
-  
+
   const config = WING_CONFIGS.find(w => w.wing === wing);
   const [flats, setFlats] = useState<Flat[]>([]);
   const [editingFlat, setEditingFlat] = useState<Flat | null>(null);
   const [editForm, setEditForm] = useState({
     ownerName: '',
-    tenantName: '',
     ownerPhone: '',
-    ownerEmail: '',
+    tenantName: '',
+    tenantPhone: '',
     parkingSpots: 0,
   });
-  
+
   if (!config || floor < 1 || floor > config.floors) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center pt-24">
@@ -35,41 +35,53 @@ export default function FloorDetailPage() {
     );
   }
 
-  // Generate flats for this floor
-  const generateFlats = () => {
-    if (floor === 1) return []; // Podium, no flats
-    
+  // Load real flats for this floor
+  useEffect(() => {
+    if (floor === 1) {
+      setFlats([]);
+      return;
+    }
+
     const flatsList: Flat[] = [];
-    for (let room = 1; room <= config.roomsPerFloor; room++) {
-      const flatNumber = `${floor}${String(room).padStart(2, '0')}`;
+    const allUsers = getUsers();
+
+    const maxRooms = (['B', 'C', 'D', 'E'].includes(wing) && floor === 19) ? 1 : config.roomsPerFloor;
+
+    for (let room = 1; room <= maxRooms; room++) {
+      const flatNumberText = `${floor}${String(room).padStart(2, '0')}`;
+      const flatID = `${wing}${flatNumberText}`;
+
+      const resident = allUsers.find(u => u.flat.toUpperCase() === flatID.toUpperCase());
+
+      // Deterministic parking spots based on flat number to avoid hydration mismatch
+      const parkingSeed = (parseInt(flatNumberText) % 3) + 1;
+
       flatsList.push({
         wing,
         floor,
         room,
-        flatNumber: `${wing}${flatNumber}`,
-        ownerName: `Owner ${flatNumber}`,
-        ownerPhone: '+91 98765 43210',
-        ownerEmail: `owner${flatNumber}@example.com`,
-        isOccupied: Math.random() > 0.2, // 80% occupancy
-        parkingSpots: Math.floor(Math.random() * 3) + 1, // 1-3 parking spots
+        flatNumber: flatID,
+        ownerName: resident ? resident.name : `Owner ${flatNumberText}`,
+        ownerPhone: resident ? resident.phone : '+91 98765 43210',
+        tenantName: resident ? resident.tenantName : undefined,
+        tenantPhone: resident ? resident.tenantPhone : undefined,
+        isOccupied: !!resident,
+        parkingSpots: parkingSeed,
       });
     }
-    return flatsList;
-  };
+    setFlats(flatsList);
+  }, [wing, floor, config.roomsPerFloor]);
 
-  const currentFlats = flats.length === 0 ? generateFlats() : flats;
-  if (flats.length === 0) {
-    setFlats(currentFlats);
-  }
+  const currentFlats = flats;
 
   const handleEditFlat = (flat: Flat) => {
     if (!isAdmin(user)) return;
     setEditingFlat(flat);
     setEditForm({
       ownerName: flat.ownerName || '',
-      tenantName: flat.tenantName || '',
       ownerPhone: flat.ownerPhone || '',
-      ownerEmail: flat.ownerEmail || '',
+      tenantName: flat.tenantName || '',
+      tenantPhone: flat.tenantPhone || '',
       parkingSpots: flat.parkingSpots || 0,
     });
   };
@@ -80,13 +92,13 @@ export default function FloorDetailPage() {
     const updatedFlats = flats.map(f =>
       f.flatNumber === editingFlat.flatNumber
         ? {
-            ...f,
-            ownerName: editForm.ownerName,
-            tenantName: editForm.tenantName,
-            ownerPhone: editForm.ownerPhone,
-            ownerEmail: editForm.ownerEmail,
-            parkingSpots: editForm.parkingSpots,
-          }
+          ...f,
+          ownerName: editForm.ownerName,
+          ownerPhone: editForm.ownerPhone,
+          tenantName: editForm.tenantName,
+          tenantPhone: editForm.tenantPhone,
+          parkingSpots: editForm.parkingSpots,
+        }
         : f
     );
 
@@ -113,7 +125,7 @@ export default function FloorDetailPage() {
             <ArrowLeft className="w-5 h-5" />
             Back to Wing {wing}
           </button>
-          
+
           <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
             <div className="flex items-center justify-between">
               <div>
@@ -181,11 +193,10 @@ export default function FloorDetailPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -5, scale: 1.02 }}
-                className={`rounded-xl p-6 border-2 transition-all ${
-                  flat.isOccupied
-                    ? 'bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-blue-500/50'
-                    : 'bg-white/5 border-white/20'
-                }`}
+                className={`rounded-xl p-6 border-2 transition-all ${flat.isOccupied
+                  ? 'bg-gradient-to-br from-blue-600/20 to-blue-800/20 border-blue-500/50'
+                  : 'bg-white/5 border-white/20'
+                  }`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div>
@@ -208,20 +219,35 @@ export default function FloorDetailPage() {
 
                 {flat.isOccupied ? (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-white/90">
-                      <Users className="w-4 h-4" />
+                    <div className="flex items-start gap-2 text-white/90">
+                      <Users className="w-4 h-4 mt-1 flex-shrink-0" />
                       <span className="font-medium">{flat.ownerName}</span>
                     </div>
                     <div className="flex items-center gap-2 text-white/70 text-sm">
                       <Phone className="w-4 h-4" />
                       <span>{flat.ownerPhone}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-white/70 text-sm">
-                      <Mail className="w-4 h-4" />
-                      <span className="truncate">{flat.ownerEmail}</span>
-                    </div>
+
+                    {flat.tenantName && (
+                      <div className="mt-2 pt-2 border-t border-white/5 space-y-2">
+                        <div className="flex items-start gap-2 text-white/90">
+                          <UserMinus className="w-4 h-4 mt-1 flex-shrink-0 text-heritage-gold" />
+                          <div className="flex flex-col">
+                            <span className="text-xs text-heritage-gold uppercase font-bold tracking-wider">Tenant</span>
+                            <span className="font-medium">{flat.tenantName}</span>
+                          </div>
+                        </div>
+                        {flat.tenantPhone && (
+                          <div className="flex items-start gap-2 text-white/70 text-sm">
+                            <Phone className="w-4 h-4 mt-1 flex-shrink-0" />
+                            <span>{flat.tenantPhone}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {flat.parkingSpots && (
-                      <div className="flex items-center gap-2 text-white/70 text-sm">
+                      <div className="flex items-center gap-2 text-white/70 text-sm pt-1">
                         <Car className="w-4 h-4" />
                         <span>{flat.parkingSpots} Parking Spot{flat.parkingSpots > 1 ? 's' : ''}</span>
                       </div>
@@ -270,15 +296,6 @@ export default function FloorDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-white/80 mb-2">Tenant Name (Optional)</label>
-                  <input
-                    type="text"
-                    value={editForm.tenantName}
-                    onChange={(e) => setEditForm({ ...editForm, tenantName: e.target.value })}
-                    className="w-full p-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-heritage-gold"
-                  />
-                </div>
-                <div>
                   <label className="block text-white/80 mb-2">Owner Phone</label>
                   <input
                     type="tel"
@@ -288,11 +305,20 @@ export default function FloorDetailPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-white/80 mb-2">Owner Email</label>
+                  <label className="block text-white/80 mb-2">Tenant Name (Optional)</label>
                   <input
-                    type="email"
-                    value={editForm.ownerEmail}
-                    onChange={(e) => setEditForm({ ...editForm, ownerEmail: e.target.value })}
+                    type="text"
+                    value={editForm.tenantName}
+                    onChange={(e) => setEditForm({ ...editForm, tenantName: e.target.value })}
+                    className="w-full p-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-heritage-gold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/80 mb-2">Tenant Phone</label>
+                  <input
+                    type="tel"
+                    value={editForm.tenantPhone}
+                    onChange={(e) => setEditForm({ ...editForm, tenantPhone: e.target.value })}
                     className="w-full p-3 rounded-lg bg-white/10 border border-white/20 text-white focus:outline-none focus:border-heritage-gold"
                   />
                 </div>
@@ -334,4 +360,3 @@ export default function FloorDetailPage() {
     </div>
   );
 }
-

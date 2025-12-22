@@ -52,8 +52,7 @@ export default function PasswordManagementPage() {
 
   const filteredUsers = users.filter(u =>
     u.flat.toUpperCase().includes(searchQuery.toUpperCase()) ||
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+    u.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -84,7 +83,7 @@ export default function PasswordManagementPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by flat number, name, or email..."
+                placeholder="Search by flat number or name..."
                 className="w-full pl-10 pr-4 py-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-heritage-gold"
               />
             </div>
@@ -110,7 +109,7 @@ export default function PasswordManagementPage() {
                         <div className="flex items-center gap-4 mt-1 text-white/70 text-sm">
                           <span>Flat: {u.flat}</span>
                           <span>Role: {u.role}</span>
-                          <span>Email: {u.email}</span>
+                          {u.tenantName && <span className="text-heritage-gold/80 italic">Tenant: {u.tenantName}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

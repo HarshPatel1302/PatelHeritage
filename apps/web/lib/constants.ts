@@ -2,10 +2,10 @@ import { WingConfig, Amenity, Shop } from '@/types';
 
 export const WING_CONFIGS: WingConfig[] = [
   { wing: 'A', floors: 17, roomsPerFloor: 3 },
-  { wing: 'B', floors: 20, roomsPerFloor: 2 },
-  { wing: 'C', floors: 20, roomsPerFloor: 2 },
-  { wing: 'D', floors: 20, roomsPerFloor: 2 },
-  { wing: 'E', floors: 20, roomsPerFloor: 2 },
+  { wing: 'B', floors: 19, roomsPerFloor: 2 }, // Floor 19 has only 1 flat (1901)
+  { wing: 'C', floors: 19, roomsPerFloor: 2 }, // Floor 19 has only 1 flat (1901)
+  { wing: 'D', floors: 19, roomsPerFloor: 2 }, // Floor 19 has only 1 flat (1901)
+  { wing: 'E', floors: 19, roomsPerFloor: 2 }, // Floor 19 has only 1 flat (1901)
   { wing: 'F', floors: 17, roomsPerFloor: 3 },
 ];
 

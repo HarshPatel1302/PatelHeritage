@@ -5,18 +5,68 @@ import { useRouter } from 'next/navigation';
 import {
   Building2, MessageSquare, Shield, ShoppingBag, Users, Calendar,
   TrendingUp, Activity, AlertCircle, BarChart3, DollarSign, FileText, Lock,
-  Check, X
+  Check, X, UserMinus, UserCheck
 } from 'lucide-react';
+import { WING_CONFIGS } from '@/lib/constants';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
-import { isAdmin, isCommitteeMember, canViewAnalytics } from '@/lib/auth';
-import { Visitor } from '@/types';
+import { isAdmin, isCommitteeMember, canViewAnalytics, getUsers } from '@/lib/auth';
+import { Visitor, User } from '@/types';
 import { useState, useEffect } from 'react';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [pendingVisitors, setPendingVisitors] = useState<Visitor[]>([]);
+  const [stats, setStats] = useState([
+    { label: 'Total Flats', value: '0', icon: Building2, color: 'from-blue-500 to-cyan-500' },
+    { label: 'Active Residents', value: '0', icon: Users, color: 'from-green-500 to-emerald-500' },
+    { label: 'Tenants', value: '0', icon: UserMinus, color: 'from-heritage-gold to-yellow-600' },
+    { label: 'Pending Messages', value: '0', icon: MessageSquare, color: 'from-purple-500 to-pink-500' },
+    { label: 'Today\'s Visitors', value: '0', icon: Shield, color: 'from-orange-500 to-red-500' },
+  ]);
+
+  useEffect(() => {
+    const allUsers = getUsers();
+
+    // Total flats count in the society
+    const totalFlats = 236;
+
+    // Filter to only resident units (excluding system accounts like security, admin, cook)
+    const residentUsers = allUsers.filter((u: User) =>
+      u.role === 'resident' &&
+      !['Security', 'Kitchen'].includes(u.flat)
+    );
+
+    // Total units occupied (Owners + Tenants)
+    const totalResidents = residentUsers.length;
+
+    // Separate count for Tenants
+    const tenantsCount = residentUsers.filter((u: User) => u.tenantName && u.tenantName.trim() !== "").length;
+
+    // Separate count for Owners (occupied by owner, not tenant)
+    const ownersCount = totalResidents - tenantsCount;
+
+    // Get pending messages count
+    const storedMessages = localStorage.getItem('messages');
+    const messagesCount = storedMessages ? JSON.parse(storedMessages).filter((m: any) => m.status === 'pending').length : 12;
+
+    // Get today's visitors count
+    const storedVisitors = localStorage.getItem('visitors');
+    const today = new Date().toISOString().split('T')[0];
+    const visitorsCount = storedVisitors ? JSON.parse(storedVisitors).filter((v: any) => {
+      if (!v.entryTime) return false;
+      return v.entryTime.startsWith(today);
+    }).length : 8;
+
+    setStats([
+      { label: 'Total Residents', value: totalResidents.toString(), icon: Users, color: 'from-blue-500 to-cyan-500' },
+      { label: 'Owners', value: ownersCount.toString(), icon: UserCheck, color: 'from-green-500 to-emerald-500' },
+      { label: 'Tenants', value: tenantsCount.toString(), icon: UserMinus, color: 'from-heritage-gold to-yellow-600' },
+      { label: 'Pending Messages', value: messagesCount.toString(), icon: MessageSquare, color: 'from-purple-500 to-pink-500' },
+      { label: 'Today\'s Visitors', value: visitorsCount.toString(), icon: Shield, color: 'from-orange-500 to-red-500' },
+    ]);
+  }, []);
 
   useEffect(() => {
     if (user?.flat) {
@@ -25,7 +75,7 @@ export default function DashboardPage() {
         if (stored) {
           const allVisitors = JSON.parse(stored);
           const pending = allVisitors.filter((v: Visitor) =>
-            v.visitingFlat === user.flat && v.status === 'pending'
+            v.visitingFlat.toUpperCase() === user.flat.toUpperCase() && v.status === 'pending'
           );
           setPendingVisitors(pending);
         }
@@ -73,12 +123,6 @@ export default function DashboardPage() {
     );
   }
 
-  const stats = [
-    { label: 'Total Flats', value: '340', icon: Building2, color: 'from-blue-500 to-cyan-500' },
-    { label: 'Active Residents', value: '280', icon: Users, color: 'from-green-500 to-emerald-500' },
-    { label: 'Pending Messages', value: '12', icon: MessageSquare, color: 'from-purple-500 to-pink-500' },
-    { label: 'Today\'s Visitors', value: '8', icon: Shield, color: 'from-orange-500 to-red-500' },
-  ];
 
   const quickActions = [
     { title: 'View Wings', icon: Building2, route: '/wings', color: 'from-blue-500 to-cyan-500' },
@@ -179,7 +223,7 @@ export default function DashboardPage() {
         )}
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
             return (

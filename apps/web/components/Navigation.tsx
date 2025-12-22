@@ -27,7 +27,7 @@ export default function Navigation() {
       if (stored) {
         const allVisitors = JSON.parse(stored);
         const pending = allVisitors.filter((v: Visitor) =>
-          v.visitingFlat === user.flat && v.status === 'pending'
+          v.visitingFlat.toUpperCase() === user.flat.toUpperCase() && v.status === 'pending'
         );
         const count = pending.length;
         setPendingCount(count);
@@ -69,8 +69,8 @@ export default function Navigation() {
     return items.filter(item => {
       // Exclude items for specific roles (can be string or array)
       if (item.excludeRole) {
-        if (Array.isArray(item.excludeRole) && item.excludeRole.includes(user?.role || '')) {
-          return false;
+        if (Array.isArray(item.excludeRole)) {
+          if (item.excludeRole.includes(user?.role || '')) return false;
         } else if (item.excludeRole === user?.role) {
           return false;
         }
@@ -153,8 +153,8 @@ export default function Navigation() {
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
                   className={`px-4 py-2 rounded-lg transition-all flex items-center gap-2 ${navItems.some(item => pathname === item.path)
-                      ? 'bg-heritage-gold text-black'
-                      : 'text-white/70 hover:text-white hover:bg-white/10'
+                    ? 'bg-heritage-gold text-black'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
                     }`}
                 >
                   <Menu className="w-5 h-5" />
@@ -180,8 +180,8 @@ export default function Navigation() {
                             setIsMoreMenuOpen(false);
                           }}
                           className={`w-full px-4 py-3 flex items-center gap-3 transition-all ${isActive
-                              ? 'bg-heritage-gold/20 text-heritage-gold'
-                              : 'text-white/70 hover:text-white hover:bg-white/10'
+                            ? 'bg-heritage-gold/20 text-heritage-gold'
+                            : 'text-white/70 hover:text-white hover:bg-white/10'
                             }`}
                         >
                           <Icon className="w-4 h-4" />
@@ -269,8 +269,8 @@ export default function Navigation() {
                         setIsOpen(false);
                       }}
                       className={`w-full px-4 py-3 rounded-lg transition-all flex items-center gap-3 ${isActive
-                          ? 'bg-heritage-gold text-black'
-                          : 'text-white/70 hover:text-white hover:bg-white/10'
+                        ? 'bg-heritage-gold text-black'
+                        : 'text-white/70 hover:text-white hover:bg-white/10'
                         }`}
                     >
                       <Icon className="w-5 h-5" />

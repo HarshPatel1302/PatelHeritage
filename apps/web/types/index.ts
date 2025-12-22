@@ -13,8 +13,8 @@ export interface Flat {
   flatNumber: string;
   ownerName?: string;
   tenantName?: string;
+  tenantPhone?: string;
   ownerPhone?: string;
-  ownerEmail?: string;
   isOccupied: boolean;
   parkingSpots?: number;
 }
@@ -121,6 +121,8 @@ export interface User {
   flat: string;
   role: 'resident' | 'chairman' | 'secretary' | 'treasurer' | 'committee' | 'security' | 'admin' | 'cook';
   avatar?: string;
+  tenantName?: string;
+  tenantPhone?: string;
 }
 
 export interface Service {

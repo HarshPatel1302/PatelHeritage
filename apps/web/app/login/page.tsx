@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogIn, Mail, Lock, Building2 } from 'lucide-react';
+import { LogIn, Lock, Building2 } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState(''); // Can be flat number or email
@@ -20,7 +20,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     const success = await login(username, password);
-    
+
     if (success) {
       // Get the logged in user to check their role
       const storedUser = localStorage.getItem('patelHeritageUser');
@@ -44,19 +44,19 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } else {
-      setError('Invalid flat number/email or password');
+      setError('Invalid flat number or password');
     }
-    
+
     setIsLoading(false);
   };
 
   // Demo credentials
   const demoUsers = [
-    { username: 'B301', password: 'chairman123', label: 'Chairman', role: 'chairman' },
-    { username: 'C401', password: 'secretary123', label: 'Secretary', role: 'secretary' },
+    { username: 'B301', password: 'chairman123', label: 'Chairman (B301)', role: 'chairman' },
+    { username: 'C401', password: 'secretary123', label: 'Secretary (C401)', role: 'secretary' },
     { username: 'A201', password: '123', label: 'Resident (A201)', role: 'resident' },
-    { username: 'security@patelheritage.com', password: 'security123', label: 'Security', role: 'security' },
-    { username: 'cook@patelheritage.com', password: 'cook123', label: 'Cook', role: 'cook' },
+    { username: 'SECURITY', password: 'security123', label: 'Security', role: 'security' },
+    { username: 'COOK', password: 'cook123', label: 'Cook', role: 'cook' },
   ];
 
   const fillDemo = (demoUsername: string, demoPassword: string) => {
@@ -85,15 +85,14 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-white/80 mb-2 flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                Flat Number or Email
+                Flat Number
               </label>
               <input
                 type="text"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toUpperCase())}
-                placeholder="Enter flat number (e.g., A201) or email"
+                placeholder="Enter flat number (e.g., A201)"
                 className="w-full p-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-heritage-gold transition-all"
               />
               <p className="text-white/50 text-xs mt-1">

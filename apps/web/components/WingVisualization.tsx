@@ -18,7 +18,7 @@ export default function WingVisualization() {
       <h2 className="text-3xl font-bold text-center text-white mb-8">
         Explore Our Wings
       </h2>
-      
+
       {/* Podium */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -42,14 +42,14 @@ export default function WingVisualization() {
             key={config.wing}
             initial={{ opacity: 0, scale: 0.8, y: 50 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ 
-              duration: 0.5, 
+            transition={{
+              duration: 0.5,
               delay: index * 0.1,
               type: "spring",
               stiffness: 100
             }}
-            whileHover={{ 
-              scale: 1.1, 
+            whileHover={{
+              scale: 1.1,
               y: -10,
               transition: { duration: 0.2 }
             }}
@@ -62,18 +62,28 @@ export default function WingVisualization() {
               <div className="flex justify-center mb-4 flex-shrink-0 h-12">
                 <Building2 className="w-12 h-12 text-white group-hover:scale-110 transition-transform" />
               </div>
-              
+
               {/* Wing Label */}
               <h3 className="text-3xl font-bold text-center text-white mb-2 flex-shrink-0 h-14 flex items-center justify-center whitespace-nowrap">
                 Wing {config.wing}
               </h3>
-              
+
               {/* Wing Details */}
               <div className="text-center text-white/90 text-sm space-y-1 flex-grow flex flex-col justify-center">
                 <p>{config.floors} Floors</p>
                 <p>{config.roomsPerFloor} Rooms/Floor</p>
                 <p className="text-xs text-white/70 mt-2">
-                  {config.floors * config.roomsPerFloor} Total Flats
+                  {(() => {
+                    let total = 0;
+                    for (let f = 2; f <= config.floors; f++) {
+                      if (['B', 'C', 'D', 'E'].includes(config.wing) && f === 19) {
+                        total += 1;
+                      } else {
+                        total += config.roomsPerFloor;
+                      }
+                    }
+                    return total;
+                  })()} Total Flats
                 </p>
               </div>
 
