@@ -2337,6 +2337,9 @@ export function getUsers(): UserWithPassword[] {
             const needsUpdate =
               storedUser.name !== mockUser.name ||
               storedUser.phone !== mockUser.phone ||
+              storedUser.flat !== mockUser.flat ||
+              storedUser.role !== mockUser.role ||
+              storedUser.email !== mockUser.email ||
               storedUser.tenantName !== mockUser.tenantName ||
               storedUser.tenantPhone !== mockUser.tenantPhone;
 
@@ -2346,6 +2349,9 @@ export function getUsers(): UserWithPassword[] {
                 ...storedUser,
                 name: mockUser.name,
                 phone: mockUser.phone,
+                flat: mockUser.flat,
+                role: mockUser.role,
+                email: mockUser.email,
                 tenantName: mockUser.tenantName,
                 tenantPhone: mockUser.tenantPhone
               };
