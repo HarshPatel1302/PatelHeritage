@@ -18,10 +18,10 @@ const MOCK_USERS: UserWithPassword[] = [
   },
   {
     "id": "secretary-1",
-    "name": "Secretary",
-    "email": "secretary@patelheritage.com",
-    "phone": "+91 98765 43212",
-    "flat": "C401",
+    "name": "Secretary (Mr. Dinesh Kanji Choudhary)",
+    "email": "f1302@patelheritage.com",
+    "phone": "9819131072",
+    "flat": "F1302",
     "role": "secretary",
     "password": "secretary123"
   },
@@ -2180,15 +2180,6 @@ const MOCK_USERS: UserWithPassword[] = [
     "password": "123",
     "tenantName": "Ashish Debath",
     "tenantPhone": "9820757840"
-  },
-  {
-    "id": "F1302",
-    "name": "Mr. Rudyben Dinesh Choudhary / Mr. Dinesh Kanji Choudhary",
-    "email": "f1302@patelheritage.com",
-    "phone": "9819131072",
-    "flat": "F1302",
-    "role": "resident",
-    "password": "123"
   },
   {
     "id": "F1303",
