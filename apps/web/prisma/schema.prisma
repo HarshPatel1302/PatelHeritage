@@ -1,0 +1,437 @@
+// Patel Heritage — Society Access Control System
+//
+// Design notes:
+//  - Everything that a gate device, kiosk, or resident phone touches lives here.
+//    The old localStorage/zustand model could not work across devices.
+//  - Visitor photos are personal data under India's DPDP Act 2023. We store only a
+//    storage key here, never the image bytes, and every photo has a hard expiry
+//    (see VisitorRequest.photoPurgeAfter) enforced by the purge job.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Prisma 7: the connection URL lives in prisma.config.ts, not here.
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  RESIDENT
+  CHAIRMAN
+  SECRETARY
+  TREASURER
+  COMMITTEE
+  SECURITY
+  ADMIN
+  COOK
+}
+
+enum RequestStatus {
+  PENDING // ringing at the flat right now
+  APPROVED
+  DENIED
+  EXPIRED // nobody answered — deny by default, escalated to guard
+  CANCELLED // visitor walked away / guard voided it
+}
+
+enum RequestSource {
+  KIOSK // visitor self-service at the gate screen
+  GUARD // guard registered it manually
+  PREAPPROVED // resident pre-authorised before arrival
+  CARD // card punch at the RS9N
+}
+
+enum VisitorPurpose {
+  GUEST
+  DELIVERY
+  SERVICE
+  CAB
+  DOMESTIC_HELP
+  OTHER
+}
+
+enum PunchDirection {
+  IN
+  OUT
+  UNKNOWN
+}
+
+/// What kind of recurring worker this card belongs to. Used for the guard's
+/// at-a-glance line ("Ramesh Kumar / Newspaper Delivery"), not for permissions.
+enum CardCategory {
+  NEWSPAPER
+  MILK
+  HOUSE_HELP
+  CLEANER
+  DRIVER
+  SOCIETY_STAFF
+  DELIVERY_REGULAR
+  VENDOR
+  RESIDENT
+  OTHER
+}
+
+/// Outcome of a single card tap. This is what the guard console renders, so it
+/// must distinguish "we do not know this card" from "we know it and it is off".
+enum PunchResult {
+  AUTHORIZED
+  UNKNOWN_CARD
+  INACTIVE_CARD
+  EXPIRED_CARD
+  NOT_YET_VALID
+  OUTSIDE_HOURS
+  PARSE_ERROR
+}
+
+/// How a device record fared through the parser.
+enum ParseStatus {
+  PARSED
+  FAILED // could not extract a card number and/or timestamp
+  IGNORED // a table we knowingly do not store (OPERLOG etc.)
+}
+
+/// How a punch's card number was matched to a registered card.
+enum CardMatchMode {
+  NONE
+  EXACT
+  /// Matched after ignoring leading zeroes, because readers and printed card
+  /// numbers often disagree about padding. Recorded so it is auditable.
+  ZERO_PADDED
+}
+
+enum Gate {
+  FRONT
+  BACK
+}
+
+/// A physical flat. Id is the flat number itself ("A201") because that is the
+/// natural key residents, guards and the kiosk all speak.
+model Flat {
+  id         String  @id
+  wing       String
+  floor      Int
+  room       Int
+  isOccupied Boolean @default(true)
+
+  users    User[]
+  requests VisitorRequest[]
+  cards    AccessCard[]
+
+  @@index([wing, floor])
+}
+
+model User {
+  id           String  @id @default(cuid())
+  name         String
+  email        String  @unique
+  phone        String
+  passwordHash String
+  role         Role    @default(RESIDENT)
+  flatId       String?
+  flat         Flat?   @relation(fields: [flatId], references: [id])
+
+  /// What the person types to sign in. For residents this is their flat number
+  /// ("A201"); for staff it is a name ("SECURITY", "KITCHEN") because a guard
+  /// or cook has no flat. Always stored uppercase.
+  username String @unique
+
+  tenantName  String?
+  tenantPhone String?
+
+  /// Seeded accounts start with a shared weak password; force a change on first login.
+  mustChangePassword Boolean   @default(true)
+  isActive           Boolean   @default(true)
+  lastLoginAt        DateTime?
+
+  /// Brute-force protection
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+
+  pushSubscriptions PushSubscription[]
+  decisions         VisitorRequest[]   @relation("RespondedBy")
+  auditLogs         AuditLog[]
+  cards             AccessCard[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([flatId])
+}
+
+/// One visitor asking to enter one flat. This is the object that "rings".
+model VisitorRequest {
+  id     String @id @default(cuid())
+  flatId String
+  flat   Flat   @relation(fields: [flatId], references: [id])
+
+  visitorName  String?
+  visitorPhone String?
+  purpose      VisitorPurpose @default(GUEST)
+  source       RequestSource
+  gate         Gate           @default(FRONT)
+
+  /// Storage key for the JPEG (not a URL — the URL is signed on read).
+  photoKey String?
+  /// Hard deletion deadline for the photo. Enforced by scripts/purge-photos.ts.
+  photoPurgeAfter DateTime?
+
+  status      RequestStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  /// Deny-by-default deadline. Past this with no answer => EXPIRED, never approved.
+  expiresAt   DateTime
+  respondedAt DateTime?
+
+  respondedById String?
+  respondedBy   User?   @relation("RespondedBy", fields: [respondedById], references: [id])
+  /// Set when the guard overrode instead of the resident answering.
+  overriddenByGuard Boolean @default(false)
+  decisionNote      String?
+
+  escalatedToGuard Boolean @default(false)
+
+  /// Anonymous per-visit id from the kiosk, used for rate limiting without identifying people.
+  kioskSessionId String?
+  ipAddress      String?
+
+  vehicleNumber String?
+
+  @@index([flatId, status])
+  @@index([status, expiresAt])
+  @@index([createdAt])
+}
+
+/// RFID card known to the RS9N. cardNumber is whatever the device reports as the PIN/badge id.
+/// A society-issued RF card. One card belongs to exactly one identifiable
+/// person (Rule 6), so personName is required and cardNumber is unique.
+model AccessCard {
+  id String @id @default(cuid())
+
+  /// Canonical form: trimmed, separators removed, uppercased. ALWAYS a string —
+  /// storing it as a number would destroy meaningful leading zeroes (Rule 7).
+  cardNumber String @unique
+
+  /// cardNumber with leading zeroes removed. Only used as an explicit,
+  /// audited fallback when a reader reports a different padding than the
+  /// number printed on the card. Not unique — an ambiguous match is refused.
+  cardNumberCompact String
+
+  personName String
+  category   CardCategory @default(OTHER)
+
+  mobileNumber String?
+  notes        String?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+  flatId String?
+  flat   Flat?   @relation(fields: [flatId], references: [id])
+
+  isActive   Boolean   @default(true)
+  validFrom  DateTime?
+  validUntil DateTime?
+
+  /// Staff working hours — a punch outside these is flagged, never blocked.
+  allowedFromHour Int?
+  allowedToHour   Int?
+
+  punches   PunchEvent[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([flatId])
+  @@index([cardNumberCompact])
+  @@index([isActive])
+}
+
+/// A physical RS9N (or any ADMS device) at a gate.
+model Device {
+  id           String @id @default(cuid())
+  serialNumber String @unique
+  name         String
+  gate         Gate   @default(FRONT)
+
+  /// Fixed-direction readers (one unit for entry, one for exit). UNKNOWN = infer from last punch.
+  direction PunchDirection @default(UNKNOWN)
+
+  isActive   Boolean   @default(true)
+  /// Diagnostics — populated by the ADMS handlers so /admin/devices can show
+  /// whether the unit is actually talking to us without touching the hardware.
+  lastSeenAt        DateTime?
+  lastHandshakeAt   DateTime?
+  lastPunchAt       DateTime?
+  lastSourceIp      String?
+  lastUserAgent     String?
+  firmware          String?
+
+  punches  PunchEvent[]
+  commands DeviceCommand[]
+
+  createdAt DateTime @default(now())
+}
+
+/// One logical card tap, already resolved to a person and an outcome.
+/// This is what the guard console reads.
+model PunchEvent {
+  id           String  @id @default(cuid())
+  deviceSerial String
+  device       Device? @relation(fields: [deviceSerial], references: [serialNumber])
+
+  /// Normalised card number exactly as resolved from the device record.
+  cardNumber String
+  cardId     String?
+  card       AccessCard?   @relation(fields: [cardId], references: [id])
+  matchMode  CardMatchMode @default(NONE)
+
+  direction  PunchDirection @default(UNKNOWN)
+  punchedAt  DateTime
+  verifyMode Int? // 1 = fingerprint, 3 = card, 4 = password (device dependent)
+
+  /// The single field the guard UI switches on.
+  result PunchResult
+
+  /// Denormalised so the log still reads correctly if a card is later renamed
+  /// or deleted — a security log must not change retrospectively.
+  personName String?
+  category   CardCategory?
+
+  /// Deterministic idempotency key. Identical retries collapse onto one row;
+  /// a genuine second tap at a different second produces a different key.
+  fingerprint String @unique
+
+  rawRecords DeviceRawRecord[]
+
+  createdAt DateTime @default(now())
+
+  @@index([punchedAt])
+  @@index([cardId, punchedAt])
+  @@index([result, punchedAt])
+  @@index([deviceSerial, punchedAt])
+}
+
+/// Everything the device sent, stored before we try to understand it (Rule 5).
+///
+/// This exists because the physical RS9N's exact ATTLOG field order is still
+/// unconfirmed. A record lands here whether parsing succeeds, fails, or the
+/// table is one we ignore — so when the real unit is connected, the raw bytes
+/// can be inspected on /admin/devices and only lib/adms.ts needs to change.
+model DeviceRawRecord {
+  id           String @id @default(cuid())
+  deviceSerial String
+
+  /// ATTLOG, OPERLOG, ATTPHOTO, ... as reported in the query string.
+  tableName   String?
+  /// The single line this record represents, or the whole body if unsplittable.
+  rawLine     String
+  /// The complete unmodified request body the device posted.
+  rawBody     String
+  queryString String?
+  sourceIp    String?
+
+  receivedAt DateTime @default(now())
+
+  parseStatus      ParseStatus
+  parseError       String?
+  parsedCardNumber String?
+  parsedPunchedAt  DateTime?
+
+  /// Same key as the PunchEvent it produced, so a device retry is recognised
+  /// even when the record could not be parsed into a punch at all.
+  fingerprint String @unique
+
+  punchEventId String?
+  punchEvent   PunchEvent? @relation(fields: [punchEventId], references: [id], onDelete: SetNull)
+
+  @@index([deviceSerial, receivedAt])
+  @@index([parseStatus, receivedAt])
+  @@index([receivedAt])
+}
+
+/// Queue of commands for a device to collect on its next /iclock/getrequest poll.
+model DeviceCommand {
+  id           String  @id @default(cuid())
+  deviceSerial String
+  device       Device  @relation(fields: [deviceSerial], references: [serialNumber])
+  command      String
+  sentAt       DateTime?
+  acknowledgedAt DateTime?
+  result       String?
+  createdAt    DateTime @default(now())
+
+  @@index([deviceSerial, sentAt])
+}
+
+model PushSubscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint String @unique
+  p256dh   String
+  auth     String
+
+  userAgent String?
+  createdAt DateTime @default(now())
+  /// Cleared when the push service reports the subscription is gone (410).
+  failedAt  DateTime?
+
+  @@index([userId])
+}
+
+/// Append-only. Every entry decision and every override lands here.
+model AuditLog {
+  id         String  @id @default(cuid())
+  actorId    String?
+  actor      User?   @relation(fields: [actorId], references: [id])
+  actorLabel String // survives user deletion
+
+  action     String // e.g. "visitor.approved", "card.deactivated"
+  entityType String
+  entityId   String?
+  meta       Json?
+  ipAddress  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+  @@index([actorId])
+}
+
+/// People barred from entry. Checked at kiosk and by the guard console.
+model BlacklistEntry {
+  id         String  @id @default(cuid())
+  name       String?
+  phone      String?
+  cardNumber String?
+  reason     String
+  addedBy    String
+  isActive   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([cardNumber])
+}
+
+/// Resident authorises a visitor before they arrive; kiosk skips the ring.
+model PreApproval {
+  id     String @id @default(cuid())
+  flatId String
+
+  visitorName  String
+  visitorPhone String?
+  /// Short numeric code the visitor reads out / types at the kiosk.
+  code         String @unique
+
+  validFrom DateTime
+  validTo   DateTime
+  usedAt    DateTime?
+
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([code])
+  @@index([flatId])
+}

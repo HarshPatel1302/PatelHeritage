@@ -10,7 +10,7 @@ import {
 import { WING_CONFIGS } from '@/lib/constants';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
-import { isAdmin, isCommitteeMember, canViewAnalytics, getUsers } from '@/lib/auth';
+import { isAdmin, isCommitteeMember, canViewAnalytics } from '@/lib/auth';
 import { Visitor, User } from '@/types';
 import { useState, useEffect } from 'react';
 
@@ -27,45 +27,31 @@ export default function DashboardPage() {
   ]);
 
   useEffect(() => {
-    const allUsers = getUsers();
+    // Counts now come from the database rather than from a bundled array and
+    // localStorage, so every device sees the same numbers.
+    let cancelled = false;
 
-    // Total flats count in the society
-    const totalFlats = 236;
+    (async () => {
+      try {
+        const res = await fetch('/api/stats', { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const s = await res.json();
 
-    // Filter to only resident units (excluding system accounts like security, admin, cook)
-    const residentUsers = allUsers.filter((u: User) =>
-      u.role === 'resident' &&
-      !['Security', 'Kitchen'].includes(u.flat)
-    );
+        setStats([
+          { label: 'Total Residents', value: String(s.residents), icon: Users, color: 'from-blue-500 to-cyan-500' },
+          { label: 'Owners', value: String(s.owners), icon: UserCheck, color: 'from-green-500 to-emerald-500' },
+          { label: 'Tenants', value: String(s.tenants), icon: UserMinus, color: 'from-heritage-gold to-yellow-600' },
+          { label: 'Awaiting Approval', value: String(s.pendingNow), icon: MessageSquare, color: 'from-purple-500 to-pink-500' },
+          { label: 'Today\'s Visitors', value: String(s.visitorsToday), icon: Shield, color: 'from-orange-500 to-red-500' },
+        ]);
+      } catch {
+        /* leave the zeroed placeholders in place */
+      }
+    })();
 
-    // Total units occupied (Owners + Tenants)
-    const totalResidents = residentUsers.length;
-
-    // Separate count for Tenants
-    const tenantsCount = residentUsers.filter((u: User) => u.tenantName && u.tenantName.trim() !== "").length;
-
-    // Separate count for Owners (occupied by owner, not tenant)
-    const ownersCount = totalResidents - tenantsCount;
-
-    // Get pending messages count
-    const storedMessages = localStorage.getItem('messages');
-    const messagesCount = storedMessages ? JSON.parse(storedMessages).filter((m: any) => m.status === 'pending').length : 12;
-
-    // Get today's visitors count
-    const storedVisitors = localStorage.getItem('visitors');
-    const today = new Date().toISOString().split('T')[0];
-    const visitorsCount = storedVisitors ? JSON.parse(storedVisitors).filter((v: any) => {
-      if (!v.entryTime) return false;
-      return v.entryTime.startsWith(today);
-    }).length : 8;
-
-    setStats([
-      { label: 'Total Residents', value: totalResidents.toString(), icon: Users, color: 'from-blue-500 to-cyan-500' },
-      { label: 'Owners', value: ownersCount.toString(), icon: UserCheck, color: 'from-green-500 to-emerald-500' },
-      { label: 'Tenants', value: tenantsCount.toString(), icon: UserMinus, color: 'from-heritage-gold to-yellow-600' },
-      { label: 'Pending Messages', value: messagesCount.toString(), icon: MessageSquare, color: 'from-purple-500 to-pink-500' },
-      { label: 'Today\'s Visitors', value: visitorsCount.toString(), icon: Shield, color: 'from-orange-500 to-red-500' },
-    ]);
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

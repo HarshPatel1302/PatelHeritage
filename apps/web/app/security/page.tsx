@@ -194,7 +194,7 @@ export default function SecurityPage() {
     alert(`Visitor registered! Notification sent to ${formData.visitingFlat}`);
   };
 
-  const usePreApproved = (preApprovedVisitor: PreApprovedVisitor) => {
+  const applyPreApproved = (preApprovedVisitor: PreApprovedVisitor) => {
     setFormData({
       name: preApprovedVisitor.name,
       phone: preApprovedVisitor.phone || '',
@@ -210,6 +210,23 @@ export default function SecurityPage() {
     <ProtectedRoute requireAuth={true} requiredRole={['security']}>
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-12 pt-24">
         <div className="container mx-auto px-4 max-w-6xl">
+          {/* This screen predates the database-backed system: its visitor list
+              lives in this browser's localStorage only, so nothing recorded here
+              reaches residents or other devices. Say so plainly rather than
+              letting a guard trust it. */}
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-4 py-3">
+            <p className="text-amber-100">
+              <strong>Legacy screen.</strong> Entries logged here stay on this device only. Use the
+              live Gate Console for real visitor and card entry.
+            </p>
+            <a
+              href="/gate"
+              className="shrink-0 rounded-lg bg-heritage-gold px-4 py-2 font-semibold text-black"
+            >
+              Open Gate Console
+            </a>
+          </div>
+
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -252,7 +269,7 @@ export default function SecurityPage() {
                           )}
                         </div>
                         <button
-                          onClick={() => usePreApproved(visitor)}
+                          onClick={() => applyPreApproved(visitor)}
                           className="px-3 py-1 bg-heritage-gold/20 hover:bg-heritage-gold/30 text-heritage-gold rounded-lg text-xs transition-all"
                         >
                           Use
@@ -504,7 +521,7 @@ export default function SecurityPage() {
                           </div>
                         </div>
                         <button
-                          onClick={() => usePreApproved(visitor)}
+                          onClick={() => applyPreApproved(visitor)}
                           disabled={isPast}
                           className={`px-3 py-1 rounded-lg text-xs transition-all ${isPast
                             ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed'

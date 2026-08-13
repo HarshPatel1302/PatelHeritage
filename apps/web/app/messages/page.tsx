@@ -16,20 +16,7 @@ export default function MessagesPage() {
   const [messageType, setMessageType] = useState<Message['type']>('complaint');
   const [selectedRecipient, setSelectedRecipient] = useState<string>('all');
 
-  // Security and Cook cannot access complaints
-  if (user?.role === 'security' || user?.role === 'cook') {
-    return (
-      <ProtectedRoute requireAuth={true}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-12 pt-24 flex items-center justify-center">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center">
-            <MessageSquare className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Access Restricted</h2>
-            <p className="text-white/70">Security and Cook cannot access complaints section.</p>
-          </div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
+
 
   // Load messages
   useEffect(() => {
@@ -89,6 +76,24 @@ export default function MessagesPage() {
     query: 'from-blue-500 to-cyan-500',
     general: 'from-purple-500 to-indigo-500',
   };
+
+  // Access check runs AFTER every hook above. Returning before them would
+  // render a different number of hooks for a permitted and a blocked user,
+  // which crashes React when the same component re-renders across roles.
+  // Security and Cook cannot access complaints
+  if (user?.role === 'security' || user?.role === 'cook') {
+    return (
+      <ProtectedRoute requireAuth={true}>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-12 pt-24 flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center">
+            <MessageSquare className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Access Restricted</h2>
+            <p className="text-white/70">Security and Cook cannot access complaints section.</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute requireAuth={true}>

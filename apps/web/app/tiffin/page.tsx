@@ -17,20 +17,7 @@ export default function TiffinPage() {
     specialInstructions: '',
   });
 
-  // Security cannot access tiffin service
-  if (user?.role === 'security') {
-    return (
-      <ProtectedRoute requireAuth={true}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-12 pt-24 flex items-center justify-center">
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center">
-            <UtensilsCrossed className="w-16 h-16 text-red-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Access Restricted</h2>
-            <p className="text-white/70">Security cannot access tiffin service.</p>
-          </div>
-        </div>
-      </ProtectedRoute>
-    );
-  }
+
 
   // Load orders
   useEffect(() => {
@@ -103,6 +90,24 @@ export default function TiffinPage() {
     delivered: 'bg-green-600/30 text-green-300',
     cancelled: 'bg-red-500/30 text-red-200',
   };
+
+  // Access check runs AFTER every hook above. Returning before them would
+  // render a different number of hooks for a permitted and a blocked user,
+  // which crashes React when the same component re-renders across roles.
+  // Security cannot access tiffin service
+  if (user?.role === 'security') {
+    return (
+      <ProtectedRoute requireAuth={true}>
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 py-12 pt-24 flex items-center justify-center">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-8 border border-white/20 text-center">
+            <UtensilsCrossed className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-white mb-2">Access Restricted</h2>
+            <p className="text-white/70">Security cannot access tiffin service.</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <ProtectedRoute requireAuth={true}>

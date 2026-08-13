@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Lock, Search, Edit2, Save, X } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
-import { isAdmin, changePassword, getUsers, generateResidentFlats } from '@/lib/auth';
+import { isAdmin } from '@/lib/auth';
 
 export default function PasswordManagementPage() {
   const { user } = useAuth();
@@ -15,10 +15,28 @@ export default function PasswordManagementPage() {
   const [newPassword, setNewPassword] = useState('');
 
   useEffect(() => {
-    if (isAdmin(user)) {
-      const allUsers = getUsers();
-      setUsers(allUsers);
-    }
+    if (!isAdmin(user)) return;
+    let cancelled = false;
+
+    (async () => {
+      const res = await fetch('/api/residents', { cache: 'no-store' }).catch(() => null);
+      if (!res?.ok || cancelled) return;
+      const data = await res.json();
+      // Map the API shape onto what this page already renders.
+      setUsers(
+        data.residents.map((r: any) => ({
+          id: r.id,
+          name: r.name ?? r.flatId,
+          flat: r.flatId,
+          role: String(r.role).toLowerCase(),
+          tenantName: r.tenantName,
+        })),
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   if (!isAdmin(user)) {
@@ -35,19 +53,27 @@ export default function PasswordManagementPage() {
     );
   }
 
-  const handleChangePassword = (flatOrId: string) => {
-    if (!user || !newPassword.trim()) return;
-
-    const success = changePassword(flatOrId, newPassword, user);
-    if (success) {
-      const updated = getUsers();
-      setUsers(updated);
-      setEditingUser(null);
-      setNewPassword('');
-      alert('Password changed successfully!');
-    } else {
-      alert('Failed to change password. User not found.');
+  const handleChangePassword = async (flatId: string) => {
+    if (!user || newPassword.trim().length < 6) {
+      alert('Password must be at least 6 characters.');
+      return;
     }
+
+    const res = await fetch('/api/admin/residents/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ flatId, newPassword }),
+    }).catch(() => null);
+
+    if (!res?.ok) {
+      const message = res ? ((await res.json().catch(() => ({}))).error ?? '') : 'No connection.';
+      alert(`Failed to change password. ${message}`.trim());
+      return;
+    }
+
+    setEditingUser(null);
+    setNewPassword('');
+    alert(`Password reset for ${flatId}. The resident must choose a new one at next sign-in.`);
   };
 
   const filteredUsers = users.filter(u =>

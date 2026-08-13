@@ -17,7 +17,7 @@ export default function UnauthorizedPage() {
         <ShieldX className="w-16 h-16 text-red-500 mx-auto mb-4" />
         <h1 className="text-3xl font-bold text-white mb-2">Access Denied</h1>
         <p className="text-white/70 mb-6">
-          You don't have permission to access this page. Please contact an administrator if you believe this is an error.
+          You don&apos;t have permission to access this page. Please contact an administrator if you believe this is an error.
         </p>
         <button
           onClick={() => router.push('/dashboard')}

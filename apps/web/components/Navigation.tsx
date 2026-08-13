@@ -2,11 +2,10 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Home, Building2, MessageSquare, Shield, ShoppingBag, Users, Calendar, Menu, X, User, Settings, LogOut, LogIn, CheckCircle2, UtensilsCrossed, Lock, ChevronDown, Bell } from 'lucide-react';
+import { Home, Building2, MessageSquare, Shield, ShoppingBag, Users, Calendar, Menu, X, User, Settings, LogOut, LogIn, CheckCircle2, UtensilsCrossed, Lock, ChevronDown, Bell, DoorOpen, CreditCard, Cpu } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { canManageVisitors, canManageMessages, canCreateAnnouncements, canViewCommonMessages, canViewTiffinOrders, isAdmin } from '@/lib/auth';
-import { Visitor } from '@/types';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -16,34 +15,39 @@ export default function Navigation() {
   const [pendingCount, setPendingCount] = useState(0);
   const [showNotificationBadge, setShowNotificationBadge] = useState(false);
   const prevCountRef = useRef(0);
-  const { user, logout, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, demoMode } = useAuth();
 
-  // Poll for pending visitors
+  // Pending-visitor badge.
+  //
+  // This used to read a 'visitors' key from localStorage that nothing writes any
+  // more, so the badge was permanently zero. It now reads the same server feed
+  // the ring overlay and the guard console use.
   useEffect(() => {
-    if (!user || user.role === 'security' || user.role === 'cook') return;
+    if (!user || user.role === 'cook') return;
 
-    const checkNotifications = () => {
-      const stored = localStorage.getItem('visitors');
-      if (stored) {
-        const allVisitors = JSON.parse(stored);
-        const pending = allVisitors.filter((v: Visitor) =>
-          v.visitingFlat.toUpperCase() === user.flat.toUpperCase() && v.status === 'pending'
-        );
-        const count = pending.length;
+    let cancelled = false;
+
+    const checkNotifications = async () => {
+      try {
+        const res = await fetch('/api/visitor-requests/pending', { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const { requests } = await res.json();
+        const count = Array.isArray(requests) ? requests.length : 0;
+
         setPendingCount(count);
-
-        // Play sound if count increased
-        if (count > prevCountRef.current) {
-          setShowNotificationBadge(true);
-          // Optional: sound effect could go here
-        }
+        if (count > prevCountRef.current) setShowNotificationBadge(true);
         prevCountRef.current = count;
+      } catch {
+        /* offline — leave the last known count in place */
       }
     };
 
-    checkNotifications();
+    void checkNotifications();
     const interval = setInterval(checkNotifications, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [user]);
 
   // All navigation items go in dropdown menu (Home removed as it's same as Dashboard)
@@ -54,7 +58,10 @@ export default function Navigation() {
     { path: '/messages/common', label: 'Common Messages', icon: MessageSquare, public: false, requiresRole: canViewCommonMessages },
     { path: '/messages', label: 'Complaints', icon: MessageSquare, public: false, requiresRole: (u: any) => u && u.role !== 'security' && u?.role !== 'cook' },
     { path: '/pre-approve', label: 'Pre-approve Visitor', icon: CheckCircle2, public: false, requiresRole: (u: any) => u?.role === 'resident' },
-    { path: '/security', label: 'Security', icon: Shield, public: false, requiresRole: canManageVisitors },
+    { path: '/gate', label: 'Gate Console', icon: DoorOpen, public: false, requiresRole: (u: any) => ['security', 'admin', 'chairman', 'secretary'].includes(u?.role) },
+    { path: '/admin/cards', label: 'Society Cards', icon: CreditCard, public: false, requiresRole: (u: any) => ['security', 'admin', 'chairman', 'secretary'].includes(u?.role) },
+    { path: '/admin/devices', label: 'Card Readers', icon: Cpu, public: false, requiresRole: (u: any) => ['security', 'admin', 'chairman', 'secretary'].includes(u?.role) },
+    { path: '/security', label: 'Security (legacy)', icon: Shield, public: false, requiresRole: canManageVisitors },
     { path: '/tiffin', label: 'Tiffin Service', icon: UtensilsCrossed, public: false, requiresRole: (u: any) => u && u.role !== 'security' },
     { path: '/shops', label: 'Shops', icon: ShoppingBag, public: false, excludeRole: ['cook', 'security'] },
     { path: '/amenities', label: 'Amenities', icon: Users, public: false, excludeRole: ['cook', 'security'] },
@@ -88,8 +95,14 @@ export default function Navigation() {
 
   const navItems = filterNavItems(allNavItemsList);
 
-  const handleLogout = () => {
-    logout();
+  // In demo mode the server signs you back in on the next request, so a real
+  // logout would bounce straight back. Go to the identity picker instead.
+  const handleLogout = async () => {
+    if (demoMode) {
+      router.push('/login');
+      return;
+    }
+    await logout();
     router.push('/login');
   };
 
@@ -299,7 +312,7 @@ export default function Navigation() {
                       className="w-full px-4 py-3 rounded-lg transition-all flex items-center gap-3 text-white/70 hover:text-white hover:bg-white/10"
                     >
                       <LogOut className="w-5 h-5" />
-                      <span className="font-medium">Logout</span>
+                      <span className="font-medium">{demoMode ? 'Switch user' : 'Logout'}</span>
                     </motion.button>
                   </>
                 ) : (

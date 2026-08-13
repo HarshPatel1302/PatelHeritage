@@ -7,7 +7,8 @@ import { WING_CONFIGS } from '@/lib/constants';
 import { Wing, Flat } from '@/types';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { isAdmin, getUsers, saveUsers, getUserByFlat } from '@/lib/auth';
+import { isAdmin } from '@/lib/auth';
+import { flatsOnFloor, roomsOnFloor } from '@/lib/flats';
 
 export default function FloorDetailPage() {
   const params = useParams();
@@ -27,50 +28,78 @@ export default function FloorDetailPage() {
     parkingSpots: 0,
   });
 
-  if (!config || floor < 1 || floor > config.floors) {
+  // Computed, not returned on, so the hooks below always run. Returning early
+  // here would call fewer hooks on an invalid floor than on a valid one, which
+  // crashes React the moment someone navigates between the two.
+  const floorExists = Boolean(config && floor >= 1 && floor <= config.floors);
+
+  // Load real flats for this floor from the database. Contact details come back
+  // only if the signed-in user is on the committee; everyone else sees occupancy.
+  useEffect(() => {
+    if (!floorExists || floor === 1) {
+      setFlats([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    (async () => {
+      let residents: Array<{
+        flatId: string | null;
+        name?: string;
+        phone?: string;
+        tenantName?: string | null;
+        tenantPhone?: string | null;
+      }> = [];
+
+      try {
+        const res = await fetch(`/api/residents?wing=${wing}&floor=${floor}`, {
+          cache: 'no-store',
+        });
+        if (res.ok) residents = (await res.json()).residents;
+      } catch {
+        /* fall through to an unoccupied view rather than breaking the page */
+      }
+      if (cancelled) return;
+
+      const flatsList: Flat[] = flatsOnFloor(wing, floor).map((flatID, index) => {
+        const resident = residents.find(
+          (r) => r.flatId?.toUpperCase() === flatID.toUpperCase(),
+        );
+        const flatNumberText = flatID.slice(1);
+
+        return {
+          wing,
+          floor,
+          room: index + 1,
+          flatNumber: flatID,
+          ownerName: resident?.name,
+          ownerPhone: resident?.phone,
+          tenantName: resident?.tenantName ?? undefined,
+          tenantPhone: resident?.tenantPhone ?? undefined,
+          isOccupied: Boolean(resident),
+          // Deterministic so server and client markup agree.
+          parkingSpots: (parseInt(flatNumberText, 10) % 3) + 1,
+        };
+      });
+
+      setFlats(flatsList);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wing, floor, floorExists]);
+
+  // Safe here: every hook above has already run on this render.
+  // `!config` is repeated so TypeScript narrows it for the JSX below.
+  if (!floorExists || !config) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center pt-24">
         <p className="text-white text-xl">Floor not found</p>
       </div>
     );
   }
-
-  // Load real flats for this floor
-  useEffect(() => {
-    if (floor === 1) {
-      setFlats([]);
-      return;
-    }
-
-    const flatsList: Flat[] = [];
-    const allUsers = getUsers();
-
-    const maxRooms = (['B', 'C', 'D', 'E'].includes(wing) && floor === 19) ? 1 : config.roomsPerFloor;
-
-    for (let room = 1; room <= maxRooms; room++) {
-      const flatNumberText = `${floor}${String(room).padStart(2, '0')}`;
-      const flatID = `${wing}${flatNumberText}`;
-
-      const resident = allUsers.find(u => u.flat.toUpperCase() === flatID.toUpperCase());
-
-      // Deterministic parking spots based on flat number to avoid hydration mismatch
-      const parkingSeed = (parseInt(flatNumberText) % 3) + 1;
-
-      flatsList.push({
-        wing,
-        floor,
-        room,
-        flatNumber: flatID,
-        ownerName: resident ? resident.name : `Owner ${flatNumberText}`,
-        ownerPhone: resident ? resident.phone : '+91 98765 43210',
-        tenantName: resident ? resident.tenantName : undefined,
-        tenantPhone: resident ? resident.tenantPhone : undefined,
-        isOccupied: !!resident,
-        parkingSpots: parkingSeed,
-      });
-    }
-    setFlats(flatsList);
-  }, [wing, floor, config.roomsPerFloor]);
 
   const currentFlats = flats;
 
@@ -86,27 +115,41 @@ export default function FloorDetailPage() {
     });
   };
 
-  const handleSaveFlat = () => {
+  const handleSaveFlat = async () => {
     if (!editingFlat || !isAdmin(user)) return;
 
-    const updatedFlats = flats.map(f =>
-      f.flatNumber === editingFlat.flatNumber
-        ? {
-          ...f,
-          ownerName: editForm.ownerName,
-          ownerPhone: editForm.ownerPhone,
-          tenantName: editForm.tenantName,
-          tenantPhone: editForm.tenantPhone,
-          parkingSpots: editForm.parkingSpots,
-        }
-        : f
-    );
+    const res = await fetch(`/api/residents/${editingFlat.flatNumber}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ownerName: editForm.ownerName,
+        ownerPhone: editForm.ownerPhone,
+        tenantName: editForm.tenantName,
+        tenantPhone: editForm.tenantPhone,
+      }),
+    }).catch(() => null);
 
-    setFlats(updatedFlats);
-    // Save to localStorage (in production, this would be an API call)
-    localStorage.setItem(`flats_${wing}_${floor}`, JSON.stringify(updatedFlats));
+    if (!res?.ok) {
+      const message = res ? ((await res.json().catch(() => ({}))).error ?? '') : '';
+      alert(`Could not save. ${message}`.trim());
+      return;
+    }
+
+    setFlats(
+      flats.map((f) =>
+        f.flatNumber === editingFlat.flatNumber
+          ? {
+              ...f,
+              ownerName: editForm.ownerName,
+              ownerPhone: editForm.ownerPhone,
+              tenantName: editForm.tenantName,
+              tenantPhone: editForm.tenantPhone,
+              parkingSpots: editForm.parkingSpots,
+            }
+          : f,
+      ),
+    );
     setEditingFlat(null);
-    alert('Flat details updated successfully!');
   };
 
   return (
@@ -133,7 +176,9 @@ export default function FloorDetailPage() {
                   {floor === 1 ? 'Podium' : `Floor ${floor}`}
                 </h1>
                 <p className="text-gray-300">
-                  Wing {wing} • {floor === 1 ? 'Common Area' : `${config.roomsPerFloor} Flats`}
+                  {/* roomsOnFloor, not config.roomsPerFloor: the top floor of
+                      wings B–E has a single flat, so the constant would lie. */}
+                  Wing {wing} • {floor === 1 ? 'Common Area' : `${roomsOnFloor(wing, floor)} Flats`}
                 </p>
               </div>
               <div className="text-right">

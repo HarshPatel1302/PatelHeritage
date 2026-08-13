@@ -1,170 +1,131 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import { Building2, Users, MessageSquare, ShoppingBag, Shield, Calendar } from 'lucide-react';
-import WingVisualization from '@/components/WingVisualization';
-import FeatureCard from '@/components/FeatureCard';
-import { useAuth } from '@/contexts/AuthContext';
+import { Bell, Building2, CreditCard, Cpu, DoorOpen, ScanFace } from 'lucide-react';
+import Link from 'next/link';
+
+/**
+ * The front door.
+ *
+ * This used to redirect straight into the society site, which meant opening
+ * localhost dropped you in a placeholder photo gallery rather than at either of
+ * the two things this system actually is. Now it names them.
+ *
+ * Deliberately static and unauthenticated: it is a signpost, not a dashboard,
+ * and every destination enforces its own access.
+ */
+
+const SURFACES = [
+  {
+    href: '/kiosk',
+    icon: ScanFace,
+    title: 'Gate Screen',
+    subtitle: 'For the tablet at the gate',
+    description:
+      'Welcome → name and purpose → wing → flat → photo. Rings the flat for approval.',
+    accent: 'from-amber-400 to-yellow-500',
+    ring: 'group-hover:border-amber-400/60',
+  },
+  {
+    href: '/owner',
+    icon: Bell,
+    title: 'Owner App',
+    subtitle: 'For residents, on their phone',
+    description:
+      'Allow or deny visitors at your flat, and see who has come. Sign in with your flat number.',
+    accent: 'from-emerald-400 to-teal-500',
+    ring: 'group-hover:border-emerald-400/60',
+  },
+  {
+    href: '/gate',
+    icon: DoorOpen,
+    title: 'Guard Console',
+    subtitle: 'For the security guard',
+    description:
+      'Live card taps from the RS9N reader and every visitor waiting, on one screen.',
+    accent: 'from-sky-400 to-blue-500',
+    ring: 'group-hover:border-sky-400/60',
+  },
+];
+
+const SECONDARY = [
+  { href: '/admin/cards', icon: CreditCard, label: 'Society Cards' },
+  { href: '/admin/devices', icon: Cpu, label: 'Card Readers' },
+  { href: '/resident-home', icon: Building2, label: 'Society Site' },
+];
 
 export default function Home() {
-  const router = useRouter();
-  const { isAuthenticated, user } = useAuth();
-
-  useEffect(() => {
-    // Redirect to appropriate page if already logged in
-    if (isAuthenticated && user) {
-      // Redirect based on user role
-      if (user.role === 'security') {
-        router.push('/security');
-      } else if (user.role === 'cook') {
-        router.push('/tiffin');
-      } else if (user.role === 'resident') {
-        router.push('/resident-home');
-      } else {
-        router.push('/dashboard');
-      }
-    }
-  }, [isAuthenticated, user, router]);
-
-  const features = [
-    {
-      icon: Building2,
-      title: 'Wing Directory',
-      description: 'Explore all wings and resident information',
-      color: 'from-blue-500 to-cyan-500',
-      onClick: () => router.push('/wings'),
-    },
-    {
-      icon: MessageSquare,
-      title: 'Complaints & Suggestions',
-      description: 'Connect with committee members',
-      color: 'from-purple-500 to-pink-500',
-      onClick: () => router.push('/messages'),
-    },
-    {
-      icon: Shield,
-      title: 'Entry Management',
-      description: 'Manage visitors and deliveries',
-      color: 'from-green-500 to-emerald-500',
-      onClick: () => router.push('/entry'),
-    },
-    {
-      icon: ShoppingBag,
-      title: 'Shop Directory',
-      description: 'Discover shops and order products',
-      color: 'from-orange-500 to-red-500',
-      onClick: () => router.push('/shops'),
-    },
-    {
-      icon: Users,
-      title: 'Amenities',
-      description: 'Book facilities and view availability',
-      color: 'from-indigo-500 to-purple-500',
-      onClick: () => router.push('/amenities'),
-    },
-    {
-      icon: Calendar,
-      title: 'Announcements',
-      description: 'Stay updated with society news',
-      color: 'from-yellow-500 to-amber-500',
-      onClick: () => router.push('/announcements'),
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 pt-16">
-      {/* Hero Section */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-        className="relative overflow-hidden"
-      >
-        {/* Animated Background */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
-          <div className="absolute top-0 -left-4 w-72 h-72 bg-heritage-gold rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-          <div className="absolute top-0 -right-4 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 px-5 py-16 pt-28">
+      <div className="container mx-auto max-w-5xl">
+        <motion.header
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-14 text-center"
+        >
+          <h1 className="text-5xl font-bold text-white sm:text-6xl">Patel Heritage</h1>
+          <p className="mt-3 text-xl text-white/45">Society Access Control</p>
+        </motion.header>
 
-        <div className="relative z-10 container mx-auto px-4 py-16">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="text-center mb-12"
-          >
-            <h1 className="text-6xl md:text-8xl font-bold mb-4 bg-gradient-to-r from-heritage-gold via-yellow-400 to-heritage-gold bg-clip-text text-transparent animate-pulse-slow">
-              Patel Heritage
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-300 mb-8">
-              Your Smart Society Management System
-            </p>
-
-            {isAuthenticated ? (
-              <div className="flex justify-center gap-4">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-3 bg-heritage-gold text-black font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all"
-                  onClick={() => router.push('/wings')}
-                >
-                  Explore Wings
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-8 py-3 bg-white/10 backdrop-blur-md text-white font-semibold rounded-lg border border-white/20 hover:bg-white/20 transition-all"
-                  onClick={() => router.push('/dashboard')}
-                >
-                  Dashboard
-                </motion.button>
-              </div>
-            ) : (
-              <div className="flex justify-center">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-12 py-4 bg-gradient-to-r from-heritage-gold to-yellow-500 text-black font-bold text-lg rounded-xl shadow-xl hover:shadow-heritage-gold/20 transition-all"
-                  onClick={() => router.push('/login')}
-                >
-                  Login to Access
-                </motion.button>
-              </div>
-            )}
-          </motion.div>
-
-          {isAuthenticated && (
-            <>
-              {/* Wing Visualization */}
+        <div className="grid gap-5 md:grid-cols-3">
+          {SURFACES.map((surface, index) => {
+            const Icon = surface.icon;
+            return (
               <motion.div
-                initial={{ opacity: 0, y: 50 }}
+                key={surface.href}
+                initial={{ opacity: 0, y: 24 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.4 }}
-                className="mb-16"
+                transition={{ delay: 0.08 + index * 0.08, type: 'spring', stiffness: 220, damping: 24 }}
               >
-                <WingVisualization />
-              </motion.div>
+                <Link
+                  href={surface.href}
+                  className={`group flex h-full flex-col rounded-3xl border-2 border-white/10 bg-white/[0.06] p-7 transition-colors ${surface.ring}`}
+                >
+                  <div
+                    className={`mb-5 inline-flex w-fit rounded-2xl bg-gradient-to-br p-4 ${surface.accent}`}
+                  >
+                    <Icon className="h-8 w-8 text-black" strokeWidth={2} />
+                  </div>
 
-              {/* Features Grid */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.6 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {features.map((feature, index) => (
-                  <FeatureCard key={index} {...feature} delay={index * 0.1} />
-                ))}
+                  <h2 className="text-2xl font-bold text-white">{surface.title}</h2>
+                  <p className="mt-0.5 text-sm font-medium uppercase tracking-wide text-white/35">
+                    {surface.subtitle}
+                  </p>
+                  <p className="mt-4 flex-1 leading-relaxed text-white/55">
+                    {surface.description}
+                  </p>
+
+                  <span className="mt-6 inline-flex items-center gap-2 font-semibold text-white/70 transition-transform group-hover:translate-x-1">
+                    Open
+                    <span aria-hidden>→</span>
+                  </span>
+                </Link>
               </motion.div>
-            </>
-          )}
+            );
+          })}
         </div>
-      </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-12 flex flex-wrap items-center justify-center gap-3"
+        >
+          {SECONDARY.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-white/65 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </motion.div>
+      </div>
     </div>
   );
 }
-

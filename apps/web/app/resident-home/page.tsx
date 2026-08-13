@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Image, Video, Building2, Users, Calendar, Heart } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import PushRegistrar from '@/components/PushRegistrar';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ResidentHomePage() {
@@ -41,6 +42,17 @@ export default function ResidentHomePage() {
             <p className="text-gray-300 text-lg">
               Your Home, Your Community, Your Heritage
             </p>
+          </motion.div>
+
+          {/* Gate alerts opt-in. Without this the resident only sees visitors
+              while the app is open on screen. */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-10 mx-auto max-w-2xl"
+          >
+            <PushRegistrar />
           </motion.div>
 
           {/* Society Photos Section */}
@@ -138,7 +150,7 @@ export default function ResidentHomePage() {
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">
               <Users className="w-12 h-12 text-heritage-gold mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">340+ Flats</h3>
+              <h3 className="text-xl font-bold text-white mb-2">236 Flats</h3>
               <p className="text-white/70">A vibrant community of residents</p>
             </div>
             <div className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20">

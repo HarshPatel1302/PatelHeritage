@@ -26,3 +26,11 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# Access control system
+storage/
+.env
+.env.local
+
+# e2e test server build output
+.next-e2e/
