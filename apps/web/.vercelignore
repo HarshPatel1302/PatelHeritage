@@ -1,0 +1,9 @@
+# Do not upload local env files — production values come from Vercel env vars
+.env
+.env.local
+.env*.local
+
+# Test artifacts
+.next-e2e/
+tests/
+storage/
